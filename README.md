@@ -1,5 +1,7 @@
 # Haruki.bot
 Music bot revamped
+Any sensitive date are removed.
+Bot created by bamb00#4632
 
 Note
 ----------------------------
