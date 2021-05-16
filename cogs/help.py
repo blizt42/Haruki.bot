@@ -10,7 +10,7 @@ class Help(commands.Cog): #All the help commands in this bot
         em = discord.Embed(title='Help', description='Use ~help <command> for extended info about the command.',
                            color=ctx.author.color)
         em.add_field(name='INFO', value='about\n', inline=False)
-        em.add_field(name='FUN', value='hi, ping, praise, rp, r, yeetball', inline=False)
+        em.add_field(name='FUN', value='hi, gtn, emote, action, ping, praise, rp, r, yeetball', inline=False)
         em.add_field(name='COMMUNICATE', value='at, dm, dma', inline=False)
         em.add_field(name='USEFUL', value='clear, flip, search', inline=False)
         em.add_field(name='MUSIC', value='join, leave, loop, play, pause, skip, view', inline=False)
@@ -25,6 +25,34 @@ class Help(commands.Cog): #All the help commands in this bot
         await ctx.send(embed=em)
 
     # FUN
+    @help.command()
+    async def gtn(self, ctx):
+        em = discord.Embed(title='Guess the number', description='plays a minigame where you literally guess the number!')
+        em.add_field(name='Usage', value='~gtn <difficulty> or ~g <difficulty>', inline=False)
+        em.add_field(name='Difficulties', value='easy, medium, hard', inline=False)
+        em.set_footer(text="pfftt it's not that hard.", icon_url=self.bot.user.avatar_url)
+        await ctx.send(embed=em)
+
+    @help.command()
+    async def emote(self,ctx):
+        em = discord.Embed(title='Emotes',
+                           description='Sends a gif according to your emote!')
+        em.add_field(name='Usage', value='~emote <emote> or ~emt <emote>', inline=False)
+        em.add_field(name='Type', value='''blush, cry, dance, lewd, pout, shrug, smile, smug, wag, laugh, grin''',
+                     inline=False)
+        em.set_footer(text="Ones way to express oneself.", icon_url=self.bot.user.avatar_url)
+        await ctx.send(embed=em)
+
+    @help.command()
+    async def action(self, ctx):
+        em = discord.Embed(title='Actions',
+                           description='Sends a gif according to your action to someone!')
+        em.add_field(name='Usage', value='~action <action> <Member> or ~act <action> <Member>', inline=False)
+        em.add_field(name='Type', value='''hug, kiss, slap, lick, cuddle, punch, pat, poke, boop, kill, bully''',
+                     inline=False)
+        em.set_footer(text="Ever wanted to do something to someone? Now you can!", icon_url=self.bot.user.avatar_url)
+        await ctx.send(embed=em)
+
     @help.command()
     async def hi(self,ctx):
         em = discord.Embed(title='Hi!', description='Greets user')

@@ -3,7 +3,7 @@
 from Haruki import client
 
 def main():
-    bot = client()
+    bot = client('TOKEN') #insert token here
     bot.run()
 
 if __name__ == '__main__':

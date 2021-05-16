@@ -1,19 +1,12 @@
-#from discord.voice_client import VoiceClient
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 from pathlib import Path
-import youtube_dl
 import asyncio
-import random
-import time
-from googlesearch import search
-import praw
-import shutil
-import os
 from random import choice
 
 class client(commands.Bot): #body of the bot
-    def __init__(self):
+    def __init__(self, token):
+        self.token = token
         self._cogs = [p.stem for p in Path(".").glob("./cogs/*.py")]
         super().__init__(command_prefix=self.prefix)
 
@@ -32,7 +25,7 @@ class client(commands.Bot): #body of the bot
         client.remove_command(self, name='help')
 
         self.setup()
-        super().run('TOKEN') #insert token here
+        super().run(self.token)
 
     async def shutdown(self):
         print('Turning off, goodbye.')
@@ -54,11 +47,17 @@ class client(commands.Bot): #body of the bot
 
     async def on_command_error(self,ctx,  error):
         text = ['Im Sowwyyy, unknown command, please try again ♥♥♥', 'Hmm, wrong command?',
-                'I dont understand 【⁀⊙﹏☉⁀?】)']
+                'I do not understand 【⁀⊙﹏☉⁀?】)']
+        cooldown = ['Chill out dude...  ', 'Can you wait??!!  ','SERIOUSLY, SLOW DOWN   ','Yamete Kudasai Oni Chan...']
         if isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send('Sowwwy, please enter the required argument (人◕ω◕)')
-        if isinstance(error, commands.CommandNotFound):
+            await ctx.send('Sowwwy, please enter the required argument (人◕ω◕), use ~help if you do not understand.')
+        elif isinstance(error, commands.CommandNotFound):
             await ctx.send(choice(text))
+        elif isinstance(error, commands.CommandOnCooldown):
+            await ctx.send(f'{choice(cooldown)} This command is on cooldown, you can use it in {round(error.retry_after, 2)} seconds.')
+        else:
+            print('Unknown error occured, please check logs.')
+            await ctx.send('An unknown error occured')
 
     async def change_status(self):
         status = ['with sadness', 'with life', 'with Paw', 'with Fire', 'with codes']

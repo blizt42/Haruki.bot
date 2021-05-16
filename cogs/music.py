@@ -25,7 +25,7 @@ ffmpeg_options = {'options': '-vn'}
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 
 
-class YTDLSource(discord.PCMVolumeTransformer): #songfile creator
+class YTDLSource(discord.PCMVolumeTransformer): # Youtube downloader class
     def __init__(self, source, *, data, volume=0.5):
         super().__init__(source, volume)
         self.data = data
@@ -33,18 +33,21 @@ class YTDLSource(discord.PCMVolumeTransformer): #songfile creator
         self.url = data.get('url')
 
     @classmethod
-    async def from_url(cls, url, *, loop=None, stream=False):
+    async def from_url(cls, url, *, loop=None, stream=False): # Used in Musicplayer to create the song file
         loop = loop or asyncio.get_event_loop()
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
         if 'entries' in data:
             # take first item from a playlist
             data = data['entries'][0]
-        filename = data['url'] if stream else ytdl.prepare_filename(data)
-        shutil.move(filename, f'music/{filename}')
-        return cls(discord.FFmpegPCMAudio(f'music/{filename}', **ffmpeg_options), data=data)
+        try:
+            filename = data['url'] if stream else ytdl.prepare_filename(data)
+            shutil.move(filename, f'music/{filename}')
+            return cls(discord.FFmpegPCMAudio(f'music/{filename}', **ffmpeg_options), data=data)
+        except Exception as e:
+            print('from_url ERROR:',e)
 
     @classmethod
-    async def check_url(cls, url, *, loop=None):
+    async def check_title(cls, url, *, loop=None): # Used in ~view to find searched title of song
         loop = loop or asyncio.get_event_loop()
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
         if 'entries' in data:
@@ -52,24 +55,40 @@ class YTDLSource(discord.PCMVolumeTransformer): #songfile creator
         searched = data['title']
         return searched
 
-class MusicPlayer: #The player that will play music
+    @classmethod
+    async def check_url(cls, url,*, loop = None): # Used in ~play to check if song is available
+        loop = loop or asyncio.get_event_loop()
+        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
+        if len(data['entries']) == 0:
+            print('check_url - No results for', url)
+            return 'No results'
+        if 'entries' in data:
+            data = data['entries'][0]
+        duration = data['duration']
+        if duration > 1800:
+            print('check_url - Song is too long to be played:', url)
+            return 'Too Long'
+        else:
+            return data['title']
+
+class MusicPlayer: # The player that will play music for each guild
     def __init__(self, ctx):
         self.bot = ctx.bot
         self.guild = ctx.guild
         self.channel = ctx.channel
         self.cog = ctx.cog
 
-        self.queue = asyncio.Queue()
-        self.next = asyncio.Event()
-        self.current = None
-        self.nowplaying =None
+        self.queue = asyncio.Queue()    # Queue list to store song names
+        self.next = asyncio.Event()     # Event to keep bot running
+        self.nowplaying =None           # Title of song playing
 
-        self.stop = False
-        self.loop = False
-        self.loopsong = None
+        self.stop = False               # Variable to stop player if True
+        self.loop = False               # Looping status of the player
+        self.loopsong = None            # Title of song which is looping
 
         ctx.bot.loop.create_task(self.Player())
-    async def Player(self):
+
+    async def Player(self): # Actual player to keep music playing if queue is not empty
         await self.bot.wait_until_ready()
         while not self.bot.is_closed():
             if self.stop:
@@ -80,21 +99,18 @@ class MusicPlayer: #The player that will play music
                 async with async_timeout.timeout(300):
                     if not self.loop:
                         player = await self.queue.get()
-                        print(f'url get : {player}')
+                        print(f'url from queue: {player}')
                     else:
-                        print('debug')
                         player = self.loopsong
             except asyncio.TimeoutError:
                 return self.destroy(self.guild)
             try:
-                print(player)
                 player = await YTDLSource.from_url(player , loop=self.bot.loop)
-                print(f'Prepared {player.title}')
+                print(f'loop status: {self.loop} | Song name: {player.title}')
             except Exception as e:
                 await self.channel.send(f'An error occured. Reason: {e}')
                 print(f'Error in processing song: {e}')
                 continue
-            self.current = player
             self.guild.voice_client.play(player, after=lambda _: self.bot.loop.call_soon_threadsafe(self.next.set))
             self.nowplaying = await self.channel.send(f'**Now Playing:** `{player.title}`')
             self.loopsong = player.title
@@ -103,7 +119,6 @@ class MusicPlayer: #The player that will play music
             except Exception as e:
                 print(f'error: {e}')
             player.cleanup()
-            self.current = None
 
             try:
                 await self.nowplaying.delete()
@@ -127,12 +142,12 @@ class MusicPlayer: #The player that will play music
     def get_song(self):
         return self.loopsong
 
-class MusicCommands(commands.Cog): #ALl commands for music
+class MusicCommands(commands.Cog): # ALl commands for music
     def __init__(self, bot):
         self.bot = bot
         self.players = {}
 
-    async def cleanup(self, guild): #Not by me
+    async def cleanup(self, guild): # Not by me
         try:
             await guild.voice_client.disconnect()
         except AttributeError:
@@ -176,6 +191,7 @@ class MusicCommands(commands.Cog): #ALl commands for music
                 await ctx.send(f'HEY!!!! Connecting error: {e}')
 
     @commands.command(name='play', aliases=['p'])
+    @commands.cooldown(1, 2, commands.BucketType.user)
     async def play(self, ctx, *, url):
         await ctx.trigger_typing()
         voice = ctx.voice_client
@@ -184,11 +200,19 @@ class MusicCommands(commands.Cog): #ALl commands for music
             await ctx.invoke(self.join)
 
         player = self.get_MusicPlayer(ctx)
-        source = await YTDLSource.from_url(url, loop=self.bot.loop)
+
+        # Using check_url to check if song is suitable
+        source = await YTDLSource.check_url(url, loop=self.bot.loop)
+        if source == 'Too Long':
+            return await ctx.send(f"Sorryy, I can't play <{url}> as it is longer than 30 minutes :(")
+        if source == 'No results':
+            return await ctx.send(f"Sorrry :( I can't find any related to <{url}>")
+
         await player.queue.put(url)
-        await ctx.send(f'{source.title} has been added to the queue.')
+        await ctx.send(f'{source} has been added to the queue.')
 
     @commands.command(name='loop')
+    @commands.cooldown(1, 2, commands.BucketType.user)
     async def loop(self, ctx):
         voice = ctx.voice_client
         player = self.get_MusicPlayer(ctx)
@@ -205,6 +229,7 @@ class MusicCommands(commands.Cog): #ALl commands for music
             await ctx.send(f'Note: Bot is paused, use ~resume.')
 
     @commands.command(name='skip')
+    @commands.cooldown(1, 2, commands.BucketType.user)
     async def skip(self, ctx):
         voice = ctx.voice_client
         if not voice or not voice.is_connected():
@@ -243,6 +268,7 @@ class MusicCommands(commands.Cog): #ALl commands for music
         await ctx.send('Now resuming player...')
 
     @commands.command(name='view')
+    @commands.cooldown(1, 2, commands.BucketType.user)
     async def view(self, ctx):
         await ctx.trigger_typing()
         player = self.get_MusicPlayer(ctx)
@@ -253,7 +279,8 @@ class MusicCommands(commands.Cog): #ALl commands for music
             return await ctx.send('Heyy!! I am not currently playing anything!')
 
         title = 'Now playing:'
-        em = discord.Embed(title=title + ' (Looping)' if player.get_loop() else title, description=f'{voice.source.title}')
+        em = discord.Embed(title=title + ' (Looping)' if player.get_loop() else title,
+                           description=f'{voice.source.title}' if voice.is_playing() else '**Wow, such empty**, use ~play <song>')
 
         view = ''
         search = ''
@@ -262,7 +289,7 @@ class MusicCommands(commands.Cog): #ALl commands for music
             for song in list:
                 count += 1
                 if count <= 5:
-                    searched = await YTDLSource.check_url(song, loop=self.bot.loop)
+                    searched = await YTDLSource.check_title(song, loop=self.bot.loop)
                     search += '{:>2}:{:^20} -> {}'.format(count, song, searched) + '\n'
                 else:
                     view += '{:>2}:{:^20}'.format(count, song) + '\n'
