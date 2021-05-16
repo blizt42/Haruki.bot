@@ -52,3 +52,48 @@
 * Modified yeetball command to access responses from yeetball.txt
 
 > WoAh TEcHnOLogy ~Haruki
+
+@ 5/16/2021 HarukiV1.5
+--------------------------------------
+### Haruki.py
+* Discord token moved to LaunchHaruki.py
+* Added cooldown error 
+
+### LaunchHaruki.py
+* Discord token is inserted here
+
+### Admin
+* Added reboot command (Linux only)
+* Added shutdown command (Linux only)
+
+### Communicate
+* Replaced time.sleep with asyncio.sleep
+* Added cooldown to at, dm, dma (all 10 seconds)
+
+### Fun
+* Added minigame called: Guess the Number
+* Added command action, aliases=act
+* Added command emote, aliases=emt
+* Added json and requests modules
+* Added Class guesstn as the gameplayer
+* Added a requirement for tenor api key
+* Added cooldown to about(10s), reddit(3s), randompicture(5s), yeetball(3s)
+* Tweaked reddit command
+
+### Help
+* Added help for action, emote and gtn
+
+### Music
+* Added check_url(new) to YTDLSource 
+* Tweaked from_url in YTDLSource
+* Renamed check_url to check_title in YTDLSource
+* Added comments and debug prints to make it easier to understand
+* Added cooldown to play, loop, skip, view (all 2 seconds)
+* Tweaked play command to search source using the new check_url in YTDLSource
+
+#### check_url in YTDLSource class
+* Is used to check if the searched query brings back a suitable song
+* Song must be at most 30 mins long
+* Handles cases where there is no results returned after searched
+
+> Guessing simulator 2k21 ~Haruki
