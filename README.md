@@ -17,7 +17,7 @@ Note
 
 Add bot to server
 ----------------------------
-https://discord.com/api/oauth2/authorize?client_id=782151291634712586&permissions=0&scope=bot
+DISCOUNTINUED
 
 How to install (raspberry pi fresh install) (my personal guide, may not be the same)
 ---------------------------
